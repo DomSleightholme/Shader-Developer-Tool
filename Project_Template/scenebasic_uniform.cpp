@@ -18,9 +18,7 @@ using glm::vec4;
 using glm::mat3;
 
 //Cam coords
-float camX;
-float camY;
-float camZ;
+float fov = 60.0f;
 
 //Texturing
 GLuint forestTex;
@@ -31,13 +29,16 @@ bool rotate;
 
 //ImGUI
 static int shaderIndex = 0;
-const char* ShaderTitle = "text";
-const char* ShaderDescription = "text";
+static int modelIndex = 0;
+const char* ShaderTitle = "title_text";
+const char* ShaderDescription = "description_text";
 
 
 SceneBasic_Uniform::SceneBasic_Uniform() : plane(30.0f, 30.0f, 100, 100) 
 {
-    mesh = ObjMesh::load("../Project_Template/media/Trinagle.obj", true);
+    Triangle = ObjMesh::load("../Project_Template/media/Trinagle.obj", true);
+    Robot = ObjMesh::load("../Project_Template/media/Robot2.obj", true);
+    TieFighter = ObjMesh::load("../Project_Template/media/Tie-Fighter.obj", true);
 }
 
 void SceneBasic_Uniform::initScene()
@@ -49,7 +50,7 @@ void SceneBasic_Uniform::initScene()
     //Create View and Projection Matrix's
     view = glm::lookAt(vec3(0.0f, 0.0f, 4.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 2.0f, 0.0f));
     projection = mat4(1.0f);
-
+   
     //Lighthing
     prog.setUniform("light.L", vec3(0.8f, 0.8f, 0.8f));
     prog.setUniform("light.La", vec3(0.1f, 0.1f, 0.1f));
@@ -100,23 +101,81 @@ void SceneBasic_Uniform::render()
     prog.use();
 
     //Mesh Render
-    prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
-    prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
-    prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
-    prog.setUniform("Material.Shininess", 30.0f);
-    model = mat4(1.0f);
-    setMatrices();
-    mesh->render();
+    if (shaderIndex == 0) 
+    {
+        if (modelIndex == 0)
+        {
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            setMatrices();
+            Triangle->render();
+        }
+        if (modelIndex == 1)
+        {
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            setMatrices();
+            Robot->render();
+        }
+        if (modelIndex == 2)
+        {
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
+            setMatrices();
+            TieFighter->render();
+        }
+    }
+    if (shaderIndex == 1) 
+    {
+        //Assigning the Spotlight position
+        mat4 spotLightPos = glm::lookAt(vec3(2.0f, -0.1f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+        vec4 lightPos = vec4(5.0f, 10.0f, 0.0f, 10.0f);
+        prog.setUniform("Spot.Position", vec3(spotLightPos * lightPos));
+        mat3 normalMatrix = mat3(vec3(spotLightPos[0]), vec3(spotLightPos[0]), vec3(spotLightPos[0]));
+        prog.setUniform("Spot.Direction", normalMatrix * vec3(-lightPos));
 
-    //Ground Render
-    prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
-    prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
-    prog.setUniform("Material.Ka", 0.1f, 0.1f, 0.1f);
-    prog.setUniform("Material.Shininess", 180.0f);
-    model = mat4(1.0f);
-    model = glm::translate(model, vec3(0.0f, -1.1f, 0.0f));
-    setMatrices();
-    plane.render();
+        if (modelIndex == 0)
+        {
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            setMatrices();
+            Triangle->render();
+        }
+        if (modelIndex == 1)
+        {
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            setMatrices();
+            Robot->render();
+        }
+        if (modelIndex == 2)
+        {
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
+            setMatrices();
+            TieFighter->render();
+        }
+    }
 
     setSkyBox();
 
@@ -144,10 +203,11 @@ void SceneBasic_Uniform::renderGUI()
         ImGui::Begin("Shader Settings", p_open, window_flags);
 
         //Camera Settings
-        ImGui::Text("Camera Coordinates:");
-        static float vec4f[3] = { 0.10f, 0.20f, 0.30f};
-        ImGui::InputFloat3(": Transform", vec4f);
-        ImGui::InputFloat3(": Rotation", vec4f);
+        ImGui::Text("Camera Zoom:");
+       
+        projection = glm::perspective(glm::radians(fov), (float)width / (float)height, 0.1f, 100.0f);
+        ImGui::SliderFloat(" ", &fov, 10.0f, 70.0f);   
+  
         ImGui::Separator();
 
         ImGui::Columns(2, "", true);
@@ -155,14 +215,21 @@ void SceneBasic_Uniform::renderGUI()
         if (ImGui::Button("Reset Camera"))
         {
             rotate = false;
+            fov = 60.0f;
             view = glm::lookAt(vec3(0.0f, 0.0f, 4.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 2.0f, 0.0f));
         }
         ImGui::Columns(1);
         ImGui::Separator();
 
+
+        //Mesh Selection
+        ImGui::Text("Model Selection:");
+        ImGui::Combo("", &modelIndex, "Triangle\0Robot\0Tie Fighter\0dddd\0eeee");       
+
         //Skybox
         static int item_current_2 = 0;
-        ImGui::Combo(": Skybox", &item_current_2, "Wild Forest\0Lava World\0City Landscape\0dddd\0eeee");        
+        ImGui::Text("Skybox Selection:");
+        ImGui::Combo("  ", &item_current_2, "Wild Forest\0Lava World\0City Landscape\0dddd\0eeee");        
              
         if (item_current_2 == 0) 
         {
@@ -180,10 +247,36 @@ void SceneBasic_Uniform::renderGUI()
             glBindTexture(GL_TEXTURE_CUBE_MAP, pisaTex);
         }
 
+        ImGui::Separator();
+        ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
     }
 
     //Frame Two
+    {
+        ShaderInfo(shaderIndex);  
+
+        ImGuiWindowFlags window_flags = 0;
+        window_flags |= ImGuiWindowFlags_NoTitleBar;
+        window_flags |= ImGuiWindowFlags_NoScrollbar;
+        window_flags |= ImGuiWindowFlags_MenuBar;
+        window_flags |= ImGuiWindowFlags_NoMove;
+        window_flags |= ImGuiWindowFlags_NoResize;
+        window_flags |= ImGuiWindowFlags_NoCollapse;
+        window_flags |= ImGuiWindowFlags_NoNav;
+        bool* p_open = NULL;
+        ImGui::Begin("Shader Selection", p_open, window_flags);
+
+        ImGui::Text("Shader Type:");
+        ImGui::Separator();          
+        ImGui::Combo("", &shaderIndex, "Blinn-Phong\0HDR\0HDR with Bloom\0Night Vision\0Edge Dectection\0Guassian Blur\0Spotlight");
+        prog.setUniform("ShaderIndex", shaderIndex);
+        ImGui::Separator();
+
+        ImGui::End();
+    }
+
+    //Frame Three
     {
         ImGuiWindowFlags window_flags = 0;
         window_flags |= ImGuiWindowFlags_NoTitleBar;
@@ -203,28 +296,6 @@ void SceneBasic_Uniform::renderGUI()
         ImGui::End();
     }
 
-    //Frame Three
-    {
-        ShaderInfo(shaderIndex);
-
-        ImGuiWindowFlags window_flags = 0;
-        window_flags |= ImGuiWindowFlags_NoTitleBar;
-        window_flags |= ImGuiWindowFlags_NoScrollbar;
-        window_flags |= ImGuiWindowFlags_MenuBar;
-        window_flags |= ImGuiWindowFlags_NoMove;
-        window_flags |= ImGuiWindowFlags_NoResize;
-        window_flags |= ImGuiWindowFlags_NoCollapse;
-        window_flags |= ImGuiWindowFlags_NoNav;
-        bool* p_open = NULL;
-        ImGui::Begin("Shader Selection", p_open, window_flags);
-
-        ImGui::Text("Shader Type:");
-        ImGui::Separator();          
-        ImGui::Combo("", &shaderIndex, "Blinn-Phong\0HDR\0HDR with Bloom\0Night Vision\0Edge Dectection\0Guassian Blur\0Spotlight");
-        ImGui::Separator();
-
-        ImGui::End();
-    }
 }
 
 void SceneBasic_Uniform::setSkyBox()

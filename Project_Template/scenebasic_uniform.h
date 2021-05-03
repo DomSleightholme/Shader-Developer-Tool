@@ -21,7 +21,9 @@ private:
 
     //Mesh Loader
     Plane plane;
-    std::unique_ptr<ObjMesh> mesh;
+    std::unique_ptr<ObjMesh> Triangle;
+    std::unique_ptr<ObjMesh> Robot;
+    std::unique_ptr<ObjMesh> TieFighter;
 
     //Skybox
     SkyBox sky;
