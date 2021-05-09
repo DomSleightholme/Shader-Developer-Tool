@@ -20,6 +20,7 @@ private:
     GLSLProgram skyShader;
     GLSLProgram edgeShader;
     GLSLProgram wireframeShader;
+    GLSLProgram waterShader;
 
     //Mesh Loader
     std::unique_ptr<ObjMesh> Triangle;
@@ -43,6 +44,10 @@ private:
     void setupWireframe();
     glm::mat4 viewport;
 
+    //Water / Lava
+    void liquidAnimation();
+    Plane plane;
+    float time;
 
     void compile();
 

@@ -31,11 +31,15 @@ GLuint R2Diffuse;
 GLuint R2Bump;
 GLuint GunTex;
 GLuint CarTex;
-GLuint Lava;
+GLuint Wood;
+GLuint LavaAnimation;
+GLuint Water;
 
 //GUI Settings
 bool rotate;
 float rotationSpeed = 1;
+float LiquidIndex;
+float skyboxIndex = 0;
 
 //ImGUI
 static int shaderIndex = 0;
@@ -44,7 +48,7 @@ const char* ShaderTitle = "title_text";
 const char* ShaderDescription = "description_text";
 
 
-SceneBasic_Uniform::SceneBasic_Uniform() : rotationAmount(0.0f)
+SceneBasic_Uniform::SceneBasic_Uniform() : rotationAmount(0.0f), time(0), plane(30.0f, 30.0f, 100, 100)
 {
     Triangle = ObjMesh::load("../Project_Template/media/Trinagle.obj", true);
     Car = ObjMesh::load("../Project_Template/media/Car.obj", true);
@@ -69,13 +73,14 @@ void SceneBasic_Uniform::initScene()
 void SceneBasic_Uniform::getTextures() 
 {
     //Texturing
-    Brick = Texture::loadTexture("media/texture/brick1.jpg");
     Cement = Texture::loadTexture("media/texture/cement.jpg");
     R2Diffuse = Texture::loadTexture("media/texture/R2_diffuse.png");
     R2Bump = Texture::loadTexture("media/texture/R2_bump.png");
     GunTex = Texture::loadTexture("media/texture/1911tex_2.png");
     CarTex = Texture::loadTexture("media/texture/CarTex.png");
-    Lava = Texture::loadTexture("media/texture/LavaTex.jpg");
+    Wood = Texture::loadTexture("media/texture/Wood.png");
+    LavaAnimation = Texture::loadTexture("media/texture/LavaAnimationTex.jpg");
+    Water = Texture::loadTexture("media/texture/WaterTex.png");
 
     //Skybox
     forestTex = Texture::loadCubeMap("media/texture/cube/forest/forest");
@@ -103,6 +108,10 @@ void SceneBasic_Uniform::compile()
         wireframeShader.compileShader("shader/Wireframe.geom");
         wireframeShader.link();
 
+        waterShader.compileShader("shader/waterShader.vert");
+        waterShader.compileShader("shader/waterShader.frag");
+        waterShader.link();
+
 	} catch (GLSLProgramException &e) {
 		cerr << e.what() << endl;
 		exit(EXIT_FAILURE);
@@ -121,6 +130,8 @@ void SceneBasic_Uniform::update( float t )
     {
         rotationAmount = 0;
     }
+
+    time = t;
 }
 
 void SceneBasic_Uniform::render()
@@ -146,7 +157,7 @@ void SceneBasic_Uniform::render()
         if (modelIndex == 0)
         {
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, Lava);
+            glBindTexture(GL_TEXTURE_2D, Wood);
 
             prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
@@ -207,6 +218,8 @@ void SceneBasic_Uniform::render()
             setMatrices(prog);
             Gun->render();
         }
+
+        liquidAnimation();
     }
     if (shaderIndex == 1)
     {
@@ -231,7 +244,7 @@ void SceneBasic_Uniform::render()
         {
             //Texturing
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, Lava);
+            glBindTexture(GL_TEXTURE_2D, Wood);
 
             //Rendering
             prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
@@ -307,6 +320,8 @@ void SceneBasic_Uniform::render()
         model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
         setMatrices(prog);
         Ground->render();
+
+        liquidAnimation();
     }
     if (shaderIndex == 4)
     {
@@ -357,11 +372,45 @@ void SceneBasic_Uniform::render()
             Gun->render();
         }
     }
-    
+
     setSkyBox();
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void SceneBasic_Uniform::liquidAnimation() 
+{
+    if (LiquidIndex == 1)
+    {
+        //Water Render
+        waterShader.use();
+        waterShader.setUniform("Time", time);
+       
+        if (skyboxIndex == 1) 
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, LavaAnimation);
+        }
+        else 
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, Water);
+        }
+
+        waterShader.setUniform("light.L", vec3(0.8f, 0.8f, 0.8f));
+        waterShader.setUniform("light.La", vec3(0.1f, 0.1f, 0.1f));
+        waterShader.setUniform("light.Position", view * glm::vec4(0.0f, 1.2f, 0.0f + 1.0f, 1.0f));
+
+        waterShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        waterShader.setUniform("Material.Ks", 0.8f, 0.8f, 0.8f);
+        waterShader.setUniform("Material.Ka", 0.2f, 0.5f, 0.9f);
+        waterShader.setUniform("Material.Shininess", 10.0f);
+        model = mat4(1.0f);
+        model = glm::translate(model, vec3(0.0f, -2.0f, 0.0f));
+        setMatrices(waterShader);
+        plane.render();
+   }
 }
 
 //GUI
@@ -403,7 +452,6 @@ void SceneBasic_Uniform::renderGUI()
         ImGui::Columns(1);
         ImGui::Separator();
 
-
         //Mesh Selection
         ImGui::Text("Model Selection:");
         ImGui::Combo("", &modelIndex, "Triangle\0Car\0R2-D2\0Gun");       
@@ -417,17 +465,37 @@ void SceneBasic_Uniform::renderGUI()
         {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, forestTex);
+            skyboxIndex = 0;
         }
         if(item_current_2 == 1)
         {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, LavaTex);
+            skyboxIndex = 1;
         }
         if (item_current_2 == 2)
         {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, pisaTex);
+            skyboxIndex = 2;
         }
+
+        if (shaderIndex == 0 || shaderIndex == 1) 
+        {
+            static int liquidIndex = 0;
+            ImGui::Text("Surface Animation:");
+            ImGui::Combo("     ", &liquidIndex, "None\0Water");
+
+            if (liquidIndex == 0)
+            {
+                LiquidIndex = 0;
+            }
+            if (liquidIndex == 1)
+            {
+                LiquidIndex = 1;
+            }
+        }
+
         ImGui::Separator();
 
         ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -639,7 +707,7 @@ void SceneBasic_Uniform::pass1()
     {
         //Texturing
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, Lava);
+        glBindTexture(GL_TEXTURE_2D, Wood);
 
         //Rendering
         edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
