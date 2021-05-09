@@ -107,6 +107,21 @@
     <None Include="shader\Sky_Uniform.vert">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shader\edgeShader.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shader\edgeShader.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shader\Wireframe.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shader\Wireframe.geom">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shader\Wireframe.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="helper\stb\stb_image.h">

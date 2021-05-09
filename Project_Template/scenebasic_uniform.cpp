@@ -25,7 +25,17 @@ GLuint forestTex;
 GLuint pisaTex;
 GLuint LavaTex;
 
+GLuint Brick;
+GLuint Cement;
+GLuint R2Diffuse;
+GLuint R2Bump;
+GLuint GunTex;
+GLuint CarTex;
+GLuint Lava;
+
+//GUI Settings
 bool rotate;
+float rotationSpeed = 1;
 
 //ImGUI
 static int shaderIndex = 0;
@@ -34,11 +44,13 @@ const char* ShaderTitle = "title_text";
 const char* ShaderDescription = "description_text";
 
 
-SceneBasic_Uniform::SceneBasic_Uniform() : plane(30.0f, 30.0f, 100, 100) 
+SceneBasic_Uniform::SceneBasic_Uniform() : rotationAmount(0.0f)
 {
     Triangle = ObjMesh::load("../Project_Template/media/Trinagle.obj", true);
-    Robot = ObjMesh::load("../Project_Template/media/Robot2.obj", true);
-    TieFighter = ObjMesh::load("../Project_Template/media/Tie-Fighter.obj", true);
+    Car = ObjMesh::load("../Project_Template/media/Car.obj", true);
+    R2D2 = ObjMesh::load("../Project_Template/media/R2D2.obj", true);
+    Gun = ObjMesh::load("../Project_Template/media/1911.obj", true);
+    Ground = ObjMesh::load("../Project_Template/media/Platform.obj", true);
 }
 
 void SceneBasic_Uniform::initScene()
@@ -50,17 +62,22 @@ void SceneBasic_Uniform::initScene()
     //Create View and Projection Matrix's
     view = glm::lookAt(vec3(0.0f, 0.0f, 4.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 2.0f, 0.0f));
     projection = mat4(1.0f);
-   
-    //Lighthing
-    prog.setUniform("light.L", vec3(0.8f, 0.8f, 0.8f));
-    prog.setUniform("light.La", vec3(0.1f, 0.1f, 0.1f));
-    prog.setUniform("light.Position", view * glm::vec4(0.0f, 1.2f, 0.0f +  1.0f, 1.0f));
 
+    getTextures();
+}
+
+void SceneBasic_Uniform::getTextures() 
+{
     //Texturing
-    GLuint texID1 = Texture::loadTexture("media/texture/brick1.jpg");
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texID1);
+    Brick = Texture::loadTexture("media/texture/brick1.jpg");
+    Cement = Texture::loadTexture("media/texture/cement.jpg");
+    R2Diffuse = Texture::loadTexture("media/texture/R2_diffuse.png");
+    R2Bump = Texture::loadTexture("media/texture/R2_bump.png");
+    GunTex = Texture::loadTexture("media/texture/1911tex_2.png");
+    CarTex = Texture::loadTexture("media/texture/CarTex.png");
+    Lava = Texture::loadTexture("media/texture/LavaTex.jpg");
 
+    //Skybox
     forestTex = Texture::loadCubeMap("media/texture/cube/forest/forest");
     pisaTex = Texture::loadCubeMap("media/texture/cube/pisa/pisa");
     LavaTex = Texture::loadCubeMap("media/texture/cube/LavaWorld/LavaWorld");
@@ -72,11 +89,19 @@ void SceneBasic_Uniform::compile()
 		prog.compileShader("shader/basic_uniform.vert");
 		prog.compileShader("shader/basic_uniform.frag");
 		prog.link();
-		prog.use();
-
+		
         skyShader.compileShader("shader/Sky_Uniform.vert", GLSLShader::VERTEX);
         skyShader.compileShader("shader/Sky_Uniform.frag", GLSLShader::FRAGMENT);
         skyShader.link();
+
+        edgeShader.compileShader("shader/edgeShader.vert", GLSLShader::VERTEX);
+        edgeShader.compileShader("shader/edgeShader.frag", GLSLShader::FRAGMENT);
+        edgeShader.link();
+
+        wireframeShader.compileShader("shader/Wireframe.vert");
+        wireframeShader.compileShader("shader/Wireframe.frag");
+        wireframeShader.compileShader("shader/Wireframe.geom");
+        wireframeShader.link();
 
 	} catch (GLSLProgramException &e) {
 		cerr << e.what() << endl;
@@ -85,104 +110,261 @@ void SceneBasic_Uniform::compile()
 }
 void SceneBasic_Uniform::update( float t )
 {
-    if (rotate) 
+    renderGUI();
+
+    if (rotate == true)
     {
-        //Constantly rotate the cam on the Y axis
-        view = glm::rotate(view, glm::radians(0.5f), vec3(0.0f, 1.0f, 0.0f));
+        rotationAmount = t;
+    }
+
+    else 
+    {
+        rotationAmount = 0;
     }
 }
 
 void SceneBasic_Uniform::render()
 {
-    renderGUI();
+    view = glm::lookAt(vec3(0.0f, 0.0f, 4.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 2.0f, 0.0f));
+    view = glm::rotate(view, glm::radians(30.0f * rotationAmount), vec3(0.0f, 1.0f, 0.0f));
 
     //Clear Color and Depth, use the initial shader program
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    prog.use();
 
     //Mesh Render
     if (shaderIndex == 0) 
     {
+        //Send Shader Index to Frag Shader
+        prog.use();
+        prog.setUniform("ShaderIndex", 0);
+
+        //Lighthing
+        prog.setUniform("light.L", vec3(0.8f, 0.8f, 0.8f));
+        prog.setUniform("light.La", vec3(0.1f, 0.1f, 0.1f));
+        prog.setUniform("light.Position", view * glm::vec4(0.0f, 1.2f, 0.0f + 1.0f, 1.0f));
+
         if (modelIndex == 0)
         {
-            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, Lava);
+
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
             prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
-            prog.setUniform("Material.Shininess", 30.0f);
+            prog.setUniform("Material.Shininess", 100.0f);
             model = mat4(1.0f);
-            setMatrices();
+            setMatrices(prog);
             Triangle->render();
         }
         if (modelIndex == 1)
         {
-            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, CarTex);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
             prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
             prog.setUniform("Material.Shininess", 30.0f);
             model = mat4(1.0f);
-            setMatrices();
-            Robot->render();
+            model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
+            model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
+            setMatrices(prog);
+            Car->render();
         }
         if (modelIndex == 2)
         {
-            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, R2Diffuse);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, R2Bump);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
             prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
             prog.setUniform("Material.Shininess", 30.0f);
             model = mat4(1.0f);
-            model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
-            setMatrices();
-            TieFighter->render();
+            model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
+            setMatrices(prog);
+            R2D2->render();
+        }
+        if (modelIndex == 3)
+        {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GunTex);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
+            setMatrices(prog);
+            Gun->render();
         }
     }
-    if (shaderIndex == 1) 
+    if (shaderIndex == 1)
     {
+        //Send Shader Index to Frag Shader
+        prog.use();
+        prog.setUniform("ShaderIndex", 1);
+
+        //Lighthing
+        prog.setUniform("Spot.L", vec3(0.9f));
+        prog.setUniform("Spot.La", vec3(0.6f));
+        prog.setUniform("Spot.Exponent", 10.0f);
+        prog.setUniform("Spot.Cutoff", glm::radians(20.5f));
+
         //Assigning the Spotlight position
-        mat4 spotLightPos = glm::lookAt(vec3(2.0f, -0.1f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
-        vec4 lightPos = vec4(5.0f, 10.0f, 0.0f, 10.0f);
+        mat4 spotLightPos = glm::lookAt(vec3(1.0f, -0.1f, 0.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+        vec4 lightPos = vec4(0.0f, 0.0f, 1.0f, 0.0f);
         prog.setUniform("Spot.Position", vec3(spotLightPos * lightPos));
         mat3 normalMatrix = mat3(vec3(spotLightPos[0]), vec3(spotLightPos[0]), vec3(spotLightPos[0]));
         prog.setUniform("Spot.Direction", normalMatrix * vec3(-lightPos));
 
         if (modelIndex == 0)
         {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, Lava);
+
+            //Rendering
             prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
             prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
             prog.setUniform("Material.Shininess", 30.0f);
             model = mat4(1.0f);
-            setMatrices();
+            setMatrices(prog);
             Triangle->render();
         }
         if (modelIndex == 1)
         {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, CarTex);
+
+            //Rendering
             prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
             prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
             prog.setUniform("Material.Shininess", 30.0f);
             model = mat4(1.0f);
-            setMatrices();
-            Robot->render();
+            model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
+            model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
+            setMatrices(prog);
+            Car->render();
         }
         if (modelIndex == 2)
         {
+            //Texture
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, R2Diffuse);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, R2Bump);
+
+            //Render
             prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
             prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
             prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
             prog.setUniform("Material.Shininess", 30.0f);
             model = mat4(1.0f);
-            model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
-            setMatrices();
-            TieFighter->render();
+            model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
+            setMatrices(prog);
+            R2D2->render();
+        }
+        if (modelIndex == 3)
+        {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GunTex);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
+            setMatrices(prog);
+            Gun->render();
+        }
+
+        //Ground Render
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, Cement);
+
+        prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+        prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        prog.setUniform("Material.Ka", 0.1f, 0.1f, 0.1f);
+        prog.setUniform("Material.Shininess", 180.0f);
+        model = mat4(1.0f);
+        model = glm::translate(model, vec3(0.0f, -3.0f, 0.0f));
+        model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
+        setMatrices(prog);
+        Ground->render();
+    }
+    if (shaderIndex == 4)
+    {
+        edgeShader.use();
+
+        initEdgeDetection();
+        pass1();
+        glFlush();
+        pass2();
+    }
+    if (shaderIndex == 5) 
+    {
+        wireframeShader.use();
+        setupWireframe();
+
+        wireframeShader.setUniform("ViewportMatrix", viewport);
+
+        if (modelIndex == 0)
+        {
+            //Rendering
+            model = mat4(1.0f);
+            setMatrices(wireframeShader);
+            Triangle->render();
+        }
+        if (modelIndex == 1)
+        {
+            //Rendering
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
+            model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
+            setMatrices(wireframeShader);
+            Car->render();
+        }
+        if (modelIndex == 2)
+        {
+            //Render
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
+            setMatrices(wireframeShader);
+            R2D2->render();
+        }
+        if (modelIndex == 3)
+        {
+            //Rendering
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
+            setMatrices(wireframeShader);
+            Gun->render();
         }
     }
-
+    
     setSkyBox();
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+//GUI
 void SceneBasic_Uniform::renderGUI() 
 {
     //GUI
@@ -224,12 +406,12 @@ void SceneBasic_Uniform::renderGUI()
 
         //Mesh Selection
         ImGui::Text("Model Selection:");
-        ImGui::Combo("", &modelIndex, "Triangle\0Robot\0Tie Fighter\0dddd\0eeee");       
+        ImGui::Combo("", &modelIndex, "Triangle\0Car\0R2-D2\0Gun");       
 
         //Skybox
         static int item_current_2 = 0;
         ImGui::Text("Skybox Selection:");
-        ImGui::Combo("  ", &item_current_2, "Wild Forest\0Lava World\0City Landscape\0dddd\0eeee");        
+        ImGui::Combo("  ", &item_current_2, "Wild Forest\0Lava World\0City Landscape");        
              
         if (item_current_2 == 0) 
         {
@@ -246,16 +428,14 @@ void SceneBasic_Uniform::renderGUI()
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_CUBE_MAP, pisaTex);
         }
-
         ImGui::Separator();
+
         ImGui::TextWrapped("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
     }
 
     //Frame Two
     {
-        ShaderInfo(shaderIndex);  
-
         ImGuiWindowFlags window_flags = 0;
         window_flags |= ImGuiWindowFlags_NoTitleBar;
         window_flags |= ImGuiWindowFlags_NoScrollbar;
@@ -269,9 +449,9 @@ void SceneBasic_Uniform::renderGUI()
 
         ImGui::Text("Shader Type:");
         ImGui::Separator();          
-        ImGui::Combo("", &shaderIndex, "Blinn-Phong\0HDR\0HDR with Bloom\0Night Vision\0Edge Dectection\0Guassian Blur\0Spotlight");
-        prog.setUniform("ShaderIndex", shaderIndex);
+        ImGui::Combo("", &shaderIndex, "Blinn-Phong\0Spotlight\0HDR\0Night Vision\0Edge Dectection\0Wireframe");
         ImGui::Separator();
+        ShaderInfo(shaderIndex);
 
         ImGui::End();
     }
@@ -291,13 +471,47 @@ void SceneBasic_Uniform::renderGUI()
         ImGui::Begin("Shader Information", p_open, window_flags);
         ImGui::Text(ShaderTitle);
         ImGui::Separator();
-        ImGui::Text(ShaderDescription);
+        ImGui::TextWrapped(ShaderDescription);
 
         ImGui::End();
     }
 
 }
+void SceneBasic_Uniform::ShaderInfo(int shaderType)
+{
+    if (shaderType == 0)
+    {
+        ShaderTitle = "Blinn-Phong Model";
+        ShaderDescription = "this is it";
+    }
+    if (shaderType == 1)
+    {
+        ShaderTitle = "Spotlight";
+        ShaderDescription = "this is it2";
+    }
+    if (shaderType == 2)
+    {
+        ShaderTitle = "HDR";
+        ShaderDescription = "this is it2";
+    }
+    if (shaderType == 3)
+    {
+        ShaderTitle = "Night Vision";
+        ShaderDescription = "Using Perlin noise, I have developed a night-vision effect that simulates the idea of looking through night-vision goggles, this effect is rendered in the second pass, our first pass being where I rendered the objects and textures.";
+    }
+    if (shaderType == 4)
+    {
+        ShaderTitle = "Edge Detection";
+        ShaderDescription = "This effect is an image processing technique that identifies regions of most significant change in the brightness of the image to create a 2D pencil sketch effect on the camera, this effect provides a way to detect the boundaries of objects or changes in topology.";
+    }
+    if (shaderType == 5)
+    {
+        ShaderTitle = "Wireframe";
+        ShaderDescription = " ";
+    }
+}
 
+//View, Projection Matrix Set Up
 void SceneBasic_Uniform::setSkyBox()
 {
     //Start using the Shaders for the Skybox
@@ -311,36 +525,230 @@ void SceneBasic_Uniform::setSkyBox()
     //Render Skybox
     sky.render();
 }
-void SceneBasic_Uniform::setMatrices()
+void SceneBasic_Uniform::setMatrices(GLSLProgram& p)
 {
     //Create a model view matrix
     mat4 mv = view * model;
 
     //Send the Model Matrix's to the Shaders
-    prog.setUniform("ModelViewMatrix", mv);
-    prog.setUniform("NormalMatrix", glm::mat3(vec3(mv[0]), vec3(mv[1]), vec3(mv[2])));
+    p.setUniform("ModelViewMatrix", mv);
+    p.setUniform("NormalMatrix", glm::mat3(vec3(mv[0]), vec3(mv[1]), vec3(mv[2])));
 
     //Calculate the MVP using the ModelViewMatrix and the Projection
-    prog.setUniform("MVP", projection * mv);
+    p.setUniform("MVP", projection * mv);
 }
+
+//Edge Detection
+void SceneBasic_Uniform::initEdgeDetection()
+{
+    setupFBO();
+
+    // Array for full-screen quad
+    GLfloat verts[] = {
+    -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+    -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f, 0.0f
+    };
+    GLfloat tc[] = {
+    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f
+    };
+
+    // Set up the buffers
+    unsigned int handle[2];
+    glGenBuffers(2, handle);
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[0]);
+    glBufferData(GL_ARRAY_BUFFER, 6 * 3 * sizeof(float), verts, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[1]);
+    glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), tc, GL_STATIC_DRAW);
+
+    // Set up the vertex array object
+    glGenVertexArrays(1, &fsQuad);
+    glBindVertexArray(fsQuad);
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[0]);
+    glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(0); // Vertex position
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[1]);
+    glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(2); // Texture coordinates
+
+    glBindVertexArray(0);
+
+    edgeShader.setUniform("EdgeThreshold", 0.05f);
+    edgeShader.setUniform("Light.L", vec3(1.0f));
+    edgeShader.setUniform("Light.La", vec3(0.2f));
+}
+void SceneBasic_Uniform::setupFBO() 
+{
+    // Generate and bind the framebuffer
+    glGenFramebuffers(1, &fboHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, fboHandle);
+
+    // Create the texture object
+    glGenTextures(1, &renderTex);
+    glBindTexture(GL_TEXTURE_2D, renderTex);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+    // Bind the texture to the FBO
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+        renderTex, 0);
+
+    // Create the depth buffer
+    GLuint depthBuf;
+    glGenRenderbuffers(1, &depthBuf);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+    // Bind the depth buffer to the FBO
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+        GL_RENDERBUFFER, depthBuf);
+
+    // Set the targets for the fragment output variables
+    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(1, drawBuffers);
+
+    // Unbind the framebuffer, and revert to default framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+void SceneBasic_Uniform::pass1() 
+{
+    edgeShader.setUniform("Pass", 1);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fboHandle);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    view = glm::lookAt(vec3(0.0f, 0.0f, 4.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 2.0f, 0.0f));
+    view = glm::rotate(view, glm::radians(30.0f * rotationAmount), vec3(0.0f, 1.0f, 0.0f));
+
+    edgeShader.setUniform("Light.Position", vec4(0.0f, 0.0f, 0.0f, 1.0f));
+ 
+
+    //Texturing
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, GunTex);
+
+    //Rendering
+    if (modelIndex == 0)
+    {
+        //Texturing
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, Lava);
+
+        //Rendering
+        edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        edgeShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        edgeShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        edgeShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        setMatrices(edgeShader);
+        Triangle->render();
+    }
+    if (modelIndex == 1)
+    {
+        //Texturing
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, CarTex);
+
+        //Rendering
+        edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        edgeShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        edgeShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        edgeShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
+        model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
+        setMatrices(edgeShader);
+        Car->render();
+    }
+    if (modelIndex == 2)
+    {
+        //Texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, R2Diffuse);
+
+        //Render
+        edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        edgeShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        edgeShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        edgeShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
+        setMatrices(edgeShader);
+        R2D2->render();
+    }
+    if (modelIndex == 3)
+    {
+        //Texturing
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, GunTex);
+
+        //Rendering
+        edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        edgeShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        edgeShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        edgeShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
+        setMatrices(edgeShader);
+        Gun->render();
+    }
+}
+void SceneBasic_Uniform::pass2() 
+{
+    edgeShader.setUniform("Pass", 2);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTex);
+
+    glDisable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    model = mat4(1.0f);
+    view = mat4(1.0f);
+    projection = mat4(1.0f);
+    setMatrices(edgeShader);
+
+    // Render the full-screen quad
+    glBindVertexArray(fsQuad);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+}
+
+//Wireframe
+void SceneBasic_Uniform::setupWireframe() 
+{
+    //Uniforms
+    wireframeShader.setUniform("Line.Width", 2.75f);
+    wireframeShader.setUniform("Line.Color", vec4(0.05f, 0.05f, 0.05f, 1.0f));
+    wireframeShader.setUniform("Material.Kd", 0.7f, 0.7f, 0.7f);
+    wireframeShader.setUniform("Light.Position", vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    wireframeShader.setUniform("Material.Ka", 0.2f, 0.2f, 0.2f);
+    wireframeShader.setUniform("Light.Intensity", 0.7f, 0.7f, 0.7f);
+    wireframeShader.setUniform("Matieral.Ks", 0.8f, 0.0f, 0.8f);
+    wireframeShader.setUniform("Material.Shininess", 100.0f);
+}
+
 void SceneBasic_Uniform::resize(int w, int h)
 {
     glViewport(0, 0, w, h);
+
     width = w;
     height = h;
+
     projection = glm::perspective(glm::radians(70.0f), (float)w / h, 0.3f, 100.0f);
+
+    //Wireframe
+    float w2 = w / 2.0f;
+    float h2 = h / 2.0f;
+    viewport = mat4(vec4(w2, 0.0f, 0.0f, 0.0f), vec4(0.0f, h2, 0.0f, 0.0f), vec4(0.0f, 0.0f, 1.0f, 0.0f), vec4(w2 + 0, h2 + 0, 0.0f, 1.0f));
 }
 
-void SceneBasic_Uniform::ShaderInfo(int shaderType)
-{
-    if (shaderType == 0) 
-    {
-        ShaderTitle = "Blinn-Phong Model";
-        ShaderDescription = "this is it";
-    }
-    if (shaderType == 1)
-    {
-        ShaderTitle = "Phong Model";
-        ShaderDescription = "this is it2";
-    }
-}
+

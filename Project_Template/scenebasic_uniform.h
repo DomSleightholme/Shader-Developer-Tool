@@ -18,15 +18,31 @@ private:
     //Shaders
     GLSLProgram prog;
     GLSLProgram skyShader;
+    GLSLProgram edgeShader;
+    GLSLProgram wireframeShader;
 
     //Mesh Loader
-    Plane plane;
     std::unique_ptr<ObjMesh> Triangle;
-    std::unique_ptr<ObjMesh> Robot;
-    std::unique_ptr<ObjMesh> TieFighter;
+    std::unique_ptr<ObjMesh> Ground;
+    std::unique_ptr<ObjMesh> Car;
+    std::unique_ptr<ObjMesh> Gun;
+    std::unique_ptr<ObjMesh> R2D2;
 
     //Skybox
     SkyBox sky;
+
+    //Edge Detection
+    float rotationAmount;
+    void initEdgeDetection();
+    void setupFBO();
+    void pass1();
+    void pass2();
+    GLuint fsQuad, fboHandle, renderTex;
+
+    //Wireframe
+    void setupWireframe();
+    glm::mat4 viewport;
+
 
     void compile();
 
@@ -38,10 +54,18 @@ public:
     void render();
     void resize(int, int);
 
-    void setMatrices();
-    void renderGUI();
+    void setMatrices(GLSLProgram& p);
     void setSkyBox();
+
+    //Texturing
+    void getTextures();
+
+    //GUI
+    void renderGUI();
     void ShaderInfo(int shaderType);
+
+    //Image Processing
+
 };
 
 #endif // SCENEBASIC_UNIFORM_H

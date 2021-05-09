@@ -170,8 +170,13 @@
   <ItemGroup>
     <None Include="shader\basic_uniform.frag" />
     <None Include="shader\basic_uniform.vert" />
+    <None Include="shader\edgeShader.frag" />
+    <None Include="shader\edgeShader.vert" />
     <None Include="shader\Sky_Uniform.frag" />
     <None Include="shader\Sky_Uniform.vert" />
+    <None Include="shader\Wireframe.frag" />
+    <None Include="shader\Wireframe.geom" />
+    <None Include="shader\Wireframe.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="helper\aabb.h" />
