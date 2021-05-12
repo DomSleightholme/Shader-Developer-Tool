@@ -20,11 +20,12 @@ using glm::mat3;
 //Cam coords
 float fov = 60.0f;
 
-//Texturing
+//Skybox Textures
 GLuint forestTex;
 GLuint pisaTex;
 GLuint LavaTex;
 
+//Textures
 GLuint Brick;
 GLuint Cement;
 GLuint R2Diffuse;
@@ -145,6 +146,9 @@ void SceneBasic_Uniform::render()
     //Mesh Render
     if (shaderIndex == 0) 
     {
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         //Send Shader Index to Frag Shader
         prog.use();
         prog.setUniform("ShaderIndex", 0);
@@ -223,6 +227,9 @@ void SceneBasic_Uniform::render()
     }
     if (shaderIndex == 1)
     {
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         //Send Shader Index to Frag Shader
         prog.use();
         prog.setUniform("ShaderIndex", 1);
@@ -325,6 +332,9 @@ void SceneBasic_Uniform::render()
     }
     if (shaderIndex == 4)
     {
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         edgeShader.use();
 
         initEdgeDetection();
@@ -334,6 +344,9 @@ void SceneBasic_Uniform::render()
     }
     if (shaderIndex == 5) 
     {
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         wireframeShader.use();
         setupWireframe();
 
@@ -528,11 +541,9 @@ void SceneBasic_Uniform::renderGUI()
     {
         ImGuiWindowFlags window_flags = 0;
         window_flags |= ImGuiWindowFlags_NoTitleBar;
-        window_flags |= ImGuiWindowFlags_NoScrollbar;
         window_flags |= ImGuiWindowFlags_MenuBar;
         window_flags |= ImGuiWindowFlags_NoMove;
         window_flags |= ImGuiWindowFlags_NoResize;
-        window_flags |= ImGuiWindowFlags_NoCollapse;
         window_flags |= ImGuiWindowFlags_NoNav;
         bool* p_open = NULL;
 
@@ -550,17 +561,17 @@ void SceneBasic_Uniform::ShaderInfo(int shaderType)
     if (shaderType == 0)
     {
         ShaderTitle = "Blinn-Phong Model";
-        ShaderDescription = "this is it";
+        ShaderDescription = "Using the Phong shading method, I am able to create the Blinn-Phong Model, this modification to the Phong shader was developed by Jim Blinn, this type of shader is the default shading model used in OpenGl and Direct3D’s fixed-function pipeline.";
     }
     if (shaderType == 1)
     {
         ShaderTitle = "Spotlight";
-        ShaderDescription = "this is it2";
+        ShaderDescription = "This shader uses a single light source to output a light ray in a specific direction unlike the Blinn-Phong Shader, the result of this shader shows the objects within the spotlight radius are lit and everything else in the scene remains dark.";
     }
     if (shaderType == 2)
     {
         ShaderTitle = "HDR";
-        ShaderDescription = "this is it2";
+        ShaderDescription = "This shader is the combination of Reinhard tone mapping algorithm applied with HDR rendering in OpenGL. By allowing the fragment colours to exceed the limit of 1.0, I have been able to use a higher range of colour values known as high dynamic range (HDR) this shader makes bright things much bright, this shader captures the realistic lighting effect in my program.";
     }
     if (shaderType == 3)
     {
@@ -575,7 +586,7 @@ void SceneBasic_Uniform::ShaderInfo(int shaderType)
     if (shaderType == 5)
     {
         ShaderTitle = "Wireframe";
-        ShaderDescription = " ";
+        ShaderDescription = "The Wireframe shader is made up of three individual shaders: vertex, fragment, and geometry. The geometry shader is used in GLSL to process the primitives of a shader, using the geometry shader, I have been able to produce the wireframe and the shaded surface of the model in a single pass.";
     }
 }
 

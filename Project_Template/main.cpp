@@ -5,7 +5,7 @@
 
 int main(int argc, char* argv[])
 {
-	SceneRunner runner("Shader_Basics");
+	SceneRunner runner("Shader Developer Tool 1.0");
 
 	std::unique_ptr<Scene> scene;
 
