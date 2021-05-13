@@ -9,7 +9,6 @@ The Shader Developer Tool is a program developed in OpenGl using the C++ Languag
 #### Shaders Used:
 * Blinn-Thong Model
 * Blinn-Thong Spotlight
-* HDR
 * Surface Animation
 * Night Vision
 * Edge Detection
