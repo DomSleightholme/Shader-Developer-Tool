@@ -9,6 +9,7 @@
 #include "helper/plane.h"
 #include "helper/objmesh.h"
 #include "helper/skybox.h"
+#include "helper/noisetex.h"
 
 #include <glm/glm.hpp>
 
@@ -21,6 +22,7 @@ private:
     GLSLProgram edgeShader;
     GLSLProgram wireframeShader;
     GLSLProgram waterShader;
+    GLSLProgram nightVisionShader;
 
     //Mesh Loader
     std::unique_ptr<ObjMesh> Triangle;
@@ -44,10 +46,20 @@ private:
     void setupWireframe();
     glm::mat4 viewport;
 
-    //Water / Lava
-    void liquidAnimation();
+    //Water + Lava
+    void liquidAnimation(GLSLProgram& prog);
     Plane plane;
     float time;
+
+    //NightVision
+    void initNightVision();
+    void nightvisionFBO();
+    void nightvisionPass1();
+    void nightvisionPass2();
+    GLuint nightfsQuad, pass1Index, pass2Index;
+    GLuint renderFBO;
+    GLuint nightrenderTex;
+    GLuint noiseTex;
 
     void compile();
 

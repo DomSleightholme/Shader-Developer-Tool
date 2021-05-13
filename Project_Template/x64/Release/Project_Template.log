@@ -1,0 +1,32 @@
+﻿  glad.c
+  cube.cpp
+  glslprogram.cpp
+  glutils.cpp
+  noisetex.cpp
+  objmesh.cpp
+C:\Users\Dom\Documents\GitHub\Shader-Developer-Tool\Project_Template\helper\objmesh.cpp(188,43): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\Dom\Documents\GitHub\Shader-Developer-Tool\Project_Template\helper\objmesh.cpp(194,50): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\Dom\Documents\GitHub\Shader-Developer-Tool\Project_Template\helper\objmesh.cpp(198,45): warning C4267: '+=': conversion from 'size_t' to 'int', possible loss of data
+  plane.cpp
+  skybox.cpp
+  stb_image.cpp
+  teapot.cpp
+  texture.cpp
+  torus.cpp
+  trianglemesh.cpp
+  imgui.cpp
+  imgui_demo.cpp
+  imgui_draw.cpp
+  imgui_impl_glfw.cpp
+  imgui_impl_opengl3.cpp
+  imgui_tables.cpp
+  imgui_widgets.cpp
+  main.cpp
+  Compiling...
+  scenebasic_uniform.cpp
+LINK : warning LNK4098: defaultlib 'MSVCRTD' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 2648 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Project_Template.vcxproj -> C:\Users\Dom\Documents\GitHub\Shader-Developer-Tool\Project_Template\x64\Release\Project_Template.exe

@@ -93,6 +93,9 @@
     <ClCompile Include="helper\skybox.cpp">
       <Filter>helper</Filter>
     </ClCompile>
+    <ClCompile Include="helper\noisetex.cpp">
+      <Filter>helper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader\basic_uniform.frag">
@@ -126,6 +129,12 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="shader\waterShader.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shader\nightvisionShader.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shader\nightvisionShader.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>
@@ -209,6 +218,9 @@
       <Filter>helper\stb</Filter>
     </ClInclude>
     <ClInclude Include="helper\skybox.h">
+      <Filter>helper</Filter>
+    </ClInclude>
+    <ClInclude Include="helper\noisetex.h">
       <Filter>helper</Filter>
     </ClInclude>
   </ItemGroup>

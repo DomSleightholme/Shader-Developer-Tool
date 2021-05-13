@@ -51,11 +51,11 @@ const char* ShaderDescription = "description_text";
 
 SceneBasic_Uniform::SceneBasic_Uniform() : rotationAmount(0.0f), time(0), plane(30.0f, 30.0f, 100, 100)
 {
-    Triangle = ObjMesh::load("../Project_Template/media/Trinagle.obj", true);
-    Car = ObjMesh::load("../Project_Template/media/Car.obj", true);
-    R2D2 = ObjMesh::load("../Project_Template/media/R2D2.obj", true);
-    Gun = ObjMesh::load("../Project_Template/media/1911.obj", true);
-    Ground = ObjMesh::load("../Project_Template/media/Platform.obj", true);
+    Triangle = ObjMesh::load("media/Trinagle.obj", true);
+    Car = ObjMesh::load("media/Car.obj", true);
+    R2D2 = ObjMesh::load("media/R2D2.obj", true);
+    Gun = ObjMesh::load("media/1911.obj", true);
+    Ground = ObjMesh::load("media/Platform.obj", true);
 }
 
 void SceneBasic_Uniform::initScene()
@@ -69,6 +69,10 @@ void SceneBasic_Uniform::initScene()
     projection = mat4(1.0f);
 
     getTextures();
+
+    nightVisionShader.use();
+
+    initNightVision();
 }
 
 void SceneBasic_Uniform::getTextures() 
@@ -113,6 +117,10 @@ void SceneBasic_Uniform::compile()
         waterShader.compileShader("shader/waterShader.frag");
         waterShader.link();
 
+        nightVisionShader.compileShader("shader/nightvisionShader.vert");
+        nightVisionShader.compileShader("shader/nightvisionShader.frag");
+        nightVisionShader.link();
+
 	} catch (GLSLProgramException &e) {
 		cerr << e.what() << endl;
 		exit(EXIT_FAILURE);
@@ -143,87 +151,16 @@ void SceneBasic_Uniform::render()
     //Clear Color and Depth, use the initial shader program
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    //Mesh Render
     if (shaderIndex == 0) 
     {
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //Send Shader Index to Frag Shader
-        prog.use();
-        prog.setUniform("ShaderIndex", 0);
+        nightVisionShader.use();
 
-        //Lighthing
-        prog.setUniform("light.L", vec3(0.8f, 0.8f, 0.8f));
-        prog.setUniform("light.La", vec3(0.1f, 0.1f, 0.1f));
-        prog.setUniform("light.Position", view * glm::vec4(0.0f, 1.2f, 0.0f + 1.0f, 1.0f));
-
-        if (modelIndex == 0)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, Wood);
-
-            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
-            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
-            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
-            prog.setUniform("Material.Shininess", 100.0f);
-            model = mat4(1.0f);
-            setMatrices(prog);
-            Triangle->render();
-        }
-        if (modelIndex == 1)
-        {
-            //Texturing
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, CarTex);
-
-            //Rendering
-            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
-            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
-            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
-            prog.setUniform("Material.Shininess", 30.0f);
-            model = mat4(1.0f);
-            model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
-            model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
-            setMatrices(prog);
-            Car->render();
-        }
-        if (modelIndex == 2)
-        {
-            //Texturing
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, R2Diffuse);
-            glActiveTexture(GL_TEXTURE1);
-            glBindTexture(GL_TEXTURE_2D, R2Bump);
-
-            //Rendering
-            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
-            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
-            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
-            prog.setUniform("Material.Shininess", 30.0f);
-            model = mat4(1.0f);
-            model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
-            setMatrices(prog);
-            R2D2->render();
-        }
-        if (modelIndex == 3)
-        {
-            //Texturing
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, GunTex);
-
-            //Rendering
-            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
-            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
-            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
-            prog.setUniform("Material.Shininess", 30.0f);
-            model = mat4(1.0f);
-            model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
-            setMatrices(prog);
-            Gun->render();
-        }
-
-        liquidAnimation();
+        nightvisionPass1();
+        glFlush();
+        nightvisionPass2();
     }
     if (shaderIndex == 1)
     {
@@ -328,9 +265,90 @@ void SceneBasic_Uniform::render()
         setMatrices(prog);
         Ground->render();
 
-        liquidAnimation();
+        liquidAnimation(prog);
     }
-    if (shaderIndex == 4)
+    if (shaderIndex == 2)
+    {
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        //Send Shader Index to Frag Shader
+        prog.use();
+        prog.setUniform("ShaderIndex", 0);
+
+        //Lighthing
+        prog.setUniform("light.L", vec3(0.8f, 0.8f, 0.8f));
+        prog.setUniform("light.La", vec3(0.1f, 0.1f, 0.1f));
+        prog.setUniform("light.Position", view* glm::vec4(0.0f, 1.2f, 0.0f + 1.0f, 1.0f));
+
+        if (modelIndex == 0)
+        {
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, Wood);
+
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 100.0f);
+            model = mat4(1.0f);
+            setMatrices(prog);
+            Triangle->render();
+        }
+        if (modelIndex == 1)
+        {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, CarTex);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
+            model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
+            setMatrices(prog);
+            Car->render();
+        }
+        if (modelIndex == 2)
+        {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, R2Diffuse);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, R2Bump);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
+            setMatrices(prog);
+            R2D2->render();
+        }
+        if (modelIndex == 3)
+        {
+            //Texturing
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, GunTex);
+
+            //Rendering
+            prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+            prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+            prog.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+            prog.setUniform("Material.Shininess", 30.0f);
+            model = mat4(1.0f);
+            model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
+            setMatrices(prog);
+            Gun->render();
+        }
+
+        liquidAnimation(prog);
+    }
+    if (shaderIndex == 3)
     {
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -342,7 +360,7 @@ void SceneBasic_Uniform::render()
         glFlush();
         pass2();
     }
-    if (shaderIndex == 5) 
+    if (shaderIndex == 4) 
     {
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -392,7 +410,8 @@ void SceneBasic_Uniform::render()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void SceneBasic_Uniform::liquidAnimation() 
+//Surface Animation
+void SceneBasic_Uniform::liquidAnimation(GLSLProgram& prog) 
 {
     if (LiquidIndex == 1)
     {
@@ -421,7 +440,7 @@ void SceneBasic_Uniform::liquidAnimation()
         waterShader.setUniform("Material.Shininess", 10.0f);
         model = mat4(1.0f);
         model = glm::translate(model, vec3(0.0f, -2.0f, 0.0f));
-        setMatrices(waterShader);
+        setMatrices(prog);
         plane.render();
    }
 }
@@ -439,9 +458,9 @@ void SceneBasic_Uniform::renderGUI()
         ImGuiWindowFlags window_flags = 0;
         window_flags |= ImGuiWindowFlags_NoScrollbar;
         window_flags |= ImGuiWindowFlags_MenuBar;
-        window_flags |= ImGuiWindowFlags_NoMove;
         window_flags |= ImGuiWindowFlags_NoResize;
         window_flags |= ImGuiWindowFlags_NoNav;
+        window_flags |= ImGuiWindowFlags_AlwaysAutoResize;
         bool* p_open = NULL;
 
         ImGui::Begin("Shader Settings", p_open, window_flags);
@@ -470,30 +489,32 @@ void SceneBasic_Uniform::renderGUI()
         ImGui::Combo("", &modelIndex, "Triangle\0Car\0R2-D2\0Gun");       
 
         //Skybox
-        static int item_current_2 = 0;
-        ImGui::Text("Skybox Selection:");
-        ImGui::Combo("  ", &item_current_2, "Wild Forest\0Lava World\0City Landscape");        
-             
-        if (item_current_2 == 0) 
+        if (shaderIndex > 0) 
         {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, forestTex);
-            skyboxIndex = 0;
-        }
-        if(item_current_2 == 1)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, LavaTex);
-            skyboxIndex = 1;
-        }
-        if (item_current_2 == 2)
-        {
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, pisaTex);
-            skyboxIndex = 2;
-        }
+            static int skyboxSelection = 0;
+            ImGui::Text("Skybox Selection:");
+            ImGui::Combo("  ", &skyboxSelection, "Wild Forest\0Lava World\0City Landscape");
 
-        if (shaderIndex == 0 || shaderIndex == 1) 
+            if (skyboxSelection == 0)
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, forestTex);
+                skyboxIndex = 0;
+            }
+            if (skyboxSelection == 1)
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, LavaTex);
+                skyboxIndex = 1;
+            }
+            if (skyboxSelection == 2)
+            {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_CUBE_MAP, pisaTex);
+                skyboxIndex = 2;
+            }
+        }
+        if (shaderIndex == 1 || shaderIndex == 2) 
         {
             static int liquidIndex = 0;
             ImGui::Text("Surface Animation:");
@@ -521,8 +542,6 @@ void SceneBasic_Uniform::renderGUI()
         window_flags |= ImGuiWindowFlags_NoTitleBar;
         window_flags |= ImGuiWindowFlags_NoScrollbar;
         window_flags |= ImGuiWindowFlags_MenuBar;
-        window_flags |= ImGuiWindowFlags_NoMove;
-        window_flags |= ImGuiWindowFlags_NoResize;
         window_flags |= ImGuiWindowFlags_NoCollapse;
         window_flags |= ImGuiWindowFlags_NoNav;
         bool* p_open = NULL;
@@ -530,7 +549,7 @@ void SceneBasic_Uniform::renderGUI()
 
         ImGui::Text("Shader Type:");
         ImGui::Separator();          
-        ImGui::Combo("", &shaderIndex, "Blinn-Phong\0Spotlight\0HDR\0Night Vision\0Edge Dectection\0Wireframe");
+        ImGui::Combo("", &shaderIndex, "Night Vision\0Spotlight\0Blinn-Phong\0Edge Dectection\0Wireframe");
         ImGui::Separator();
         ShaderInfo(shaderIndex);
 
@@ -542,8 +561,6 @@ void SceneBasic_Uniform::renderGUI()
         ImGuiWindowFlags window_flags = 0;
         window_flags |= ImGuiWindowFlags_NoTitleBar;
         window_flags |= ImGuiWindowFlags_MenuBar;
-        window_flags |= ImGuiWindowFlags_NoMove;
-        window_flags |= ImGuiWindowFlags_NoResize;
         window_flags |= ImGuiWindowFlags_NoNav;
         bool* p_open = NULL;
 
@@ -560,8 +577,8 @@ void SceneBasic_Uniform::ShaderInfo(int shaderType)
 {
     if (shaderType == 0)
     {
-        ShaderTitle = "Blinn-Phong Model";
-        ShaderDescription = "Using the Phong shading method, I am able to create the Blinn-Phong Model, this modification to the Phong shader was developed by Jim Blinn, this type of shader is the default shading model used in OpenGl and Direct3D’s fixed-function pipeline.";
+        ShaderTitle = "Night Vision";
+        ShaderDescription = "Using Perlin noise, I have developed a night-vision effect that simulates the idea of looking through night-vision goggles, this effect is rendered in the second pass, our first pass being where I rendered the objects and textures.";
     }
     if (shaderType == 1)
     {
@@ -570,20 +587,15 @@ void SceneBasic_Uniform::ShaderInfo(int shaderType)
     }
     if (shaderType == 2)
     {
-        ShaderTitle = "HDR";
-        ShaderDescription = "This shader is the combination of Reinhard tone mapping algorithm applied with HDR rendering in OpenGL. By allowing the fragment colours to exceed the limit of 1.0, I have been able to use a higher range of colour values known as high dynamic range (HDR) this shader makes bright things much bright, this shader captures the realistic lighting effect in my program.";
+        ShaderTitle = "Blinn-Phong Model";
+        ShaderDescription = "Using the Phong shading method, I am able to create the Blinn-Phong Model, this modification to the Phong shader was developed by Jim Blinn, this type of shader is the default shading model used in OpenGl and Direct3D’s fixed-function pipeline.";
     }
     if (shaderType == 3)
-    {
-        ShaderTitle = "Night Vision";
-        ShaderDescription = "Using Perlin noise, I have developed a night-vision effect that simulates the idea of looking through night-vision goggles, this effect is rendered in the second pass, our first pass being where I rendered the objects and textures.";
-    }
-    if (shaderType == 4)
     {
         ShaderTitle = "Edge Detection";
         ShaderDescription = "This effect is an image processing technique that identifies regions of most significant change in the brightness of the image to create a 2D pencil sketch effect on the camera, this effect provides a way to detect the boundaries of objects or changes in topology.";
     }
-    if (shaderType == 5)
+    if (shaderType == 4)
     {
         ShaderTitle = "Wireframe";
         ShaderDescription = "The Wireframe shader is made up of three individual shaders: vertex, fragment, and geometry. The geometry shader is used in GLSL to process the primitives of a shader, using the geometry shader, I have been able to produce the wireframe and the shaded surface of the model in a single pass.";
@@ -707,11 +719,6 @@ void SceneBasic_Uniform::pass1()
     view = glm::rotate(view, glm::radians(30.0f * rotationAmount), vec3(0.0f, 1.0f, 0.0f));
 
     edgeShader.setUniform("Light.Position", vec4(0.0f, 0.0f, 0.0f, 1.0f));
- 
-
-    //Texturing
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, GunTex);
 
     //Rendering
     if (modelIndex == 0)
@@ -813,6 +820,209 @@ void SceneBasic_Uniform::setupWireframe()
     wireframeShader.setUniform("Light.Intensity", 0.7f, 0.7f, 0.7f);
     wireframeShader.setUniform("Matieral.Ks", 0.8f, 0.0f, 0.8f);
     wireframeShader.setUniform("Material.Shininess", 100.0f);
+}
+
+//NightVision
+void SceneBasic_Uniform::initNightVision() 
+{
+    nightvisionFBO();
+
+    GLfloat verts[] = {
+        -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
+        -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f, 0.0f
+    };
+    GLfloat tc[] = {
+        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f
+    };
+
+    //Set up Buffers
+    unsigned int handle[2];
+    glGenBuffers(2, handle);
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[0]);
+    glBufferData(GL_ARRAY_BUFFER, 6 * 3 * sizeof(float), verts, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[1]);
+    glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), tc, GL_STATIC_DRAW);
+
+    //Set up vertex array object
+    glGenVertexArrays(1, &nightfsQuad);
+    glBindVertexArray(nightfsQuad);
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[0]);
+    glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, ((GLubyte*)NULL + (0)));
+    glEnableVertexAttribArray(0); //Vertex position
+
+    glBindBuffer(GL_ARRAY_BUFFER, handle[1]);
+    glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, ((GLubyte*)NULL + (0)));
+    glEnableVertexAttribArray(2); //Texture coordinates
+
+    glBindVertexArray(0);
+
+    //set up the subroutine indexes
+    GLuint programHandle = nightVisionShader.getHandle();
+    pass1Index = glGetSubroutineIndex(programHandle, GL_FRAGMENT_SHADER, "pass1");
+    pass2Index = glGetSubroutineIndex(programHandle, GL_FRAGMENT_SHADER, "pass2");
+
+    nightVisionShader.setUniform("Width", width);
+    nightVisionShader.setUniform("Height", height);
+    nightVisionShader.setUniform("Radius", width / 3.5f);
+    nightVisionShader.setUniform("Light.L", vec3(0.8f, 0.8f, 0.8f));
+    nightVisionShader.setUniform("Light.La", vec3(0.1f, 0.1f, 0.1f));
+
+    noiseTex = NoiseTex::generatePeriodic2DTex(200.0f, 0.5f, 512, 512);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, noiseTex);
+
+    nightVisionShader.setUniform("RenderTex", 0);
+    nightVisionShader.setUniform("NoiseTex", 1);
+}
+void SceneBasic_Uniform::nightvisionFBO() 
+{
+    //Generate and bind the framebuffer
+    glGenFramebuffers(1, &renderFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
+
+    //Create Texture Object
+    glGenTextures(1, &nightrenderTex);
+    glBindTexture(GL_TEXTURE_2D, nightrenderTex);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    //Bind the texture to the FBO
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, nightrenderTex, 0);
+
+    //Create the depth buffer
+    GLuint depthBuf;
+    glGenRenderbuffers(1, &depthBuf);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBuf);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+
+    //Bind the depth buffer to the FBO
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuf);
+
+    //Set the targets for the fragment output variables
+    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+    glDrawBuffers(1, drawBuffers);
+
+    //Unbind the framebuffer, and revert to default framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+void SceneBasic_Uniform::nightvisionPass1() 
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, renderFBO);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &pass1Index);
+
+    view = glm::lookAt(vec3(0.0f, 0.0f, 4.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 2.0f, 0.0f));
+    view = glm::rotate(view, glm::radians(30.0f * rotationAmount), vec3(0.0f, 1.0f, 0.0f));
+
+    edgeShader.setUniform("Light.Position", vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+    //Rendering
+    if (modelIndex == 0) 
+    {
+        //Texturing
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, Wood);
+
+        //Rendering
+        nightVisionShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        nightVisionShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        nightVisionShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        nightVisionShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        setMatrices(nightVisionShader);
+        Triangle->render();
+    }
+    if (modelIndex == 1) 
+    {
+        //Texturing
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, CarTex);
+
+        //Rendering
+        nightVisionShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        nightVisionShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        nightVisionShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        nightVisionShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        model = glm::scale(model, vec3(0.25f, 0.25f, 0.25f));
+        model = glm::translate(model, vec3(0.0f, -1.0f, 0.0f));
+        setMatrices(nightVisionShader);
+        Car->render();
+    }
+    if (modelIndex == 2)
+    {
+        //Texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, R2Diffuse);
+
+        //Render
+        edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        edgeShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        edgeShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        edgeShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        model = glm::scale(model, vec3(0.3f, 0.3f, 0.3f));
+        setMatrices(nightVisionShader);
+        R2D2->render();
+    }
+    if (modelIndex == 3)
+    {
+        //Texturing
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, GunTex);
+
+        //Rendering
+        edgeShader.setUniform("Material.Kd", 0.4f, 0.4f, 0.4f);
+        edgeShader.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+        edgeShader.setUniform("Material.Ka", 0.5f, 0.5f, 0.5f);
+        edgeShader.setUniform("Material.Shininess", 30.0f);
+        model = mat4(1.0f);
+        model = glm::scale(model, vec3(0.75f, 0.75f, 0.75f));
+        setMatrices(nightVisionShader);
+        Gun->render();
+    }
+
+    //Ground Render
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, Cement);
+
+    prog.setUniform("Material.Kd", 0.1f, 0.1f, 0.1f);
+    prog.setUniform("Material.Ks", 0.9f, 0.9f, 0.9f);
+    prog.setUniform("Material.Ka", 0.1f, 0.1f, 0.1f);
+    prog.setUniform("Material.Shininess", 180.0f);
+    model = mat4(1.0f);
+    model = glm::translate(model, vec3(0.0f, -3.0f, 0.0f));
+    model = glm::scale(model, vec3(0.5f, 0.5f, 0.5f));
+    setMatrices(nightVisionShader);
+    Ground->render();
+}
+void SceneBasic_Uniform::nightvisionPass2() 
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, nightrenderTex);
+
+    glDisable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glUniformSubroutinesuiv(GL_FRAGMENT_SHADER, 1, &pass2Index);
+
+    model = mat4(1.0f);
+    view = mat4(1.0f);
+    projection = mat4(1.0f);
+    setMatrices(nightVisionShader);
+
+    // Render the full-screen quad
+    glBindVertexArray(nightfsQuad);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
 }
 
 void SceneBasic_Uniform::resize(int w, int h)
