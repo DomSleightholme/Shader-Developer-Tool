@@ -47,7 +47,7 @@ private:
     glm::mat4 viewport;
 
     //Water + Lava
-    void liquidAnimation(GLSLProgram& prog);
+    void liquidAnimation();
     Plane plane;
     float time;
 

@@ -265,7 +265,7 @@ void SceneBasic_Uniform::render()
         setMatrices(prog);
         Ground->render();
 
-        liquidAnimation(prog);
+        liquidAnimation();
     }
     if (shaderIndex == 2)
     {
@@ -346,7 +346,7 @@ void SceneBasic_Uniform::render()
             Gun->render();
         }
 
-        liquidAnimation(prog);
+        liquidAnimation();
     }
     if (shaderIndex == 3)
     {
@@ -411,7 +411,7 @@ void SceneBasic_Uniform::render()
 }
 
 //Surface Animation
-void SceneBasic_Uniform::liquidAnimation(GLSLProgram& prog) 
+void SceneBasic_Uniform::liquidAnimation() 
 {
     if (LiquidIndex == 1)
     {
@@ -440,7 +440,7 @@ void SceneBasic_Uniform::liquidAnimation(GLSLProgram& prog)
         waterShader.setUniform("Material.Shininess", 10.0f);
         model = mat4(1.0f);
         model = glm::translate(model, vec3(0.0f, -2.0f, 0.0f));
-        setMatrices(prog);
+        setMatrices(waterShader);
         plane.render();
    }
 }
